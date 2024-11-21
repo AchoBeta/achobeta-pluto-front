@@ -1,21 +1,16 @@
 {
-  "compilerOptions": { // 设置 baseUrl 为项目根目录
+  "compilerOptions": {
     "target": "ES2020",
     "jsx": "preserve",
-    "lib": [
-      "ES2020",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "useDefineForClassFields": true, // 确保是 "node" 或 "nodenext"
-    "baseUrl": ".",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "useDefineForClassFields": true,
+    "baseUrl": ".", // 设置项目根目录
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "node", // 确保模块解析为 "node" 或 "nodenext"
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    }
+      "@/*": ["src/*"]
+    },
+    "types": ["vite/client"] // 添加 Vite 客户端类型定义
   },
   "references": [
     {
@@ -30,5 +25,5 @@
     "src/stores/countStore/index.js",
     "src/auto-imports.d.ts",
     "src/components.d.ts"
-  ]
+, "src/utils/api"  ]
 }
