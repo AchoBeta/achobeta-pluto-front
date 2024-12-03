@@ -1,7 +1,9 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import { ArrowDown } from '@element-plus/icons-vue';
-import { fetchNameApi, getDevicesApi, removeDeviceApi } from '@/utils/api/home'
+import { fetchNameApi, getDevicesApi, removeDeviceApi } from '@/axios/api/home'
+import { exitSystem } from '@/components/layout/utils/Logout'; // 引入 exitSystem 函数
+import dayjs from 'dayjs';
 
 const router = useRouter();
 const name = ref('林浅');
@@ -12,9 +14,34 @@ const navigateToPersonalCenter = () => {
 };
 
 //// 退出登录
-const handleLogout = () => {
-  console.log('执行登出操作');
-  router.push('/login');
+const handleLogout = async () => {
+  try {
+    // 调用 exitSystem 接口
+    const result = await exitSystem();
+    if (result.success) {
+      ElMessage.success(result.message); // 成功提示
+      clearLocalStorage();
+      // 跳转到登录页面，确保用户无法通过返回按钮回到原页面
+      router.replace('/login');
+    } else {
+      ElMessage.warning(result.message); // 警告提示
+      if (result.code === -20000 || result.code === -20002) {
+        clearLocalStorage();
+        router.replace('/login');
+      }
+    }
+  } catch (error) {
+    console.error('退出登录出错:', error);
+    ElMessage.error('退出失败，请稍后重试');
+  } 
+};
+// 清理本地存储
+const clearLocalStorage = () => {
+  localStorage.removeItem('atoken');
+  localStorage.removeItem('rtoken');
+  localStorage.removeItem('userid');
+  localStorage.removeItem('user_agent');
+  localStorage.removeItem('ip');
 };
   
 ////常用设备
@@ -25,106 +52,95 @@ const deviceDialogVisible = ref(false);
 const showDeviceDialog = () => {
   deviceDialogVisible.value = true; // 显示对话框 骨架扇
   try {
-      updateCurrentGridData(currentPage);
+      updateCurrentGridData();
     } catch (error) {
       // 处理获取设备数据时发生的错误
       ElMessage.error('成员信息获取失败。')
       console.error('Failed to update grid data:', error);
     }
   }
-  
-const currentGridData = ref([
-    { name: '设备A', ip: '192.168.1.1', time: '2023-04-01 10:00:00' },
-    { name: '设备B', ip: '192.168.1.2', time: '2023-04-01 10:30:00' },
-    { name: '设备C', ip: '192.168.1.3', time: '2023-04-01 11:00:00' },
-    { name: '设备D', ip: '192.168.1.4', time: '2023-04-01 11:30:00' },
-    { name: '设备E', ip: '192.168.1.5', time: '2023-04-01 12:00:00' },
-    { name: '设备F', ip: '192.168.1.6', time: '2023-04-01 12:30:00' },
-    { name: '设备G', ip: '192.168.1.7', time: '2023-04-01 13:00:00' },
-    { name: '设备H', ip: '192.168.1.8', time: '2023-04-01 13:30:00' },
-    { name: '设备I', ip: '192.168.1.9', time: '2023-04-01 14:00:00' },
-    { name: '设备J', ip: '192.168.1.10', time: '2023-04-01 14:30:00' }
-  ]);
-
+const currentGridData = ref([]);
+for(let i = 0; i < currentGridData.value.length; i++){
+      let time = currentGridData.value[i].online_time;
+      currentGridData.value[i].online_time = dayjs(time).format('YYYY-MM-DD HH:mm:ss ');
+    }
+const service_id = localStorage.getItem('service_id');//当前设备
+console.log('当前设备:',service_id);
 //分页
 const totalDevices = ref(10); // 假设总共有10台设备
-const pageSize = 5; // 开发阶段为3，后期更改为每页显示5台设备 
-const currentPage = ref('1'); // 当前页码
+const pageSize = 6; // 开发阶段为3，后期更改为每页显示5台设备 
+const currentPage = ref(1); // 当前页码
+
+//下线
+const handleOffLine = async (id,index) => {
+  try {
+    console.log('下线设备-设备ID:',id);
+    const response = await removeDeviceApi({id});
+    console.log('下线设备-后端响应内容:', response.data); // 打印后端响应内容
+    if(response.data.code === 20000){
+      ElMessage.success('下线成功。');
+      buttonStates.value[index] = true;
+      // updateCurrentGridData();
+    }}
+  catch(error){
+    ElMessage.error('下线失败。');
+    console.error('Error fetching devices:', error);
+  }
+}
 
 // 更新当前页数据
 const buttonStates= ref([]);
 const handlePageChange = (page) => {
   buttonStates.value = [];
   currentPage.value = page;
-  updateCurrentGridData(currentPage);
+  updateCurrentGridData();
 }
-const updateCurrentGridData = (currentPage) => {
-  // const startIndex = (currentPage.value - 1) * pageSize;
-  // const endIndex = currentPage.value * pageSize;
-  // currentGridData.value = gridData.value.slice(startIndex, endIndex);
-  getDevicesApi(atoken,currentPage)
-  .then(data => {
-    currentGridData.value = data.gridData.value;
-    totalDevices.value = data.total.value;
-  })
-  .catch(error => {
+const updateCurrentGridData = async() => {
+  try{
+    const response = await getDevicesApi({page_number:currentPage.value,line_number:pageSize});
+    console.log('更新常用设备列表-后端响应内容:', response.data); // 打印后端响应内容 
+      currentGridData.value = response.data.data.devices;
+      totalDevices.value = response.data.data.total;
+      buttonStates.value = currentGridData.value.map(() => false);
+      for(let i = 0; i < currentGridData.value.length; i++){
+        if(!currentGridData.value[i].device_name) currentGridData.value[i].device_name = `设备${6*(currentPage.value-1)+(i+1)}`;
+        let time = currentGridData.value[i].online_time;
+        currentGridData.value[i].online_time = dayjs(time).format('YYYY-MM-DD HH:mm:ss ');
+        }}
+  catch(error){
     ElMessage.error('成员信息获取失败。');
     console.error('Error fetching devices:', error);
-  });
-}
-
-//下线
-  const currentName = ('设备A');
-  buttonStates.value = currentGridData.value.map(() => false);
-  function handleClick(index) {
-      const atoken = localStorage.getItem('atoken');
-      removeDeviceApi(atoken)
-      .then(data => {
-        if(data.result.value){
-          ElMessage({
-          message: '下线成功。',
-          type: 'success',
-        })
-          buttonStates.value[index] = true;
-        }
-        else{
-          ElMessage.error('下线失败。');
-      }}).catch(error => {
-        ElMessage.error('下线失败。');
-        console.error('Error Offline devices', error);
-      });}
+}}
 
 ////挂载
-  onMounted(async () => {
-    // 获取并赋值name
-    const atoken = localStorage.getItem('atoken');//从本地获取atoken
-    fetchNameApi(atoken)
-    .then(data => {
-        name.value = data.username; // 获取并赋值给 name
-    })
-    .catch(error => {
-      ElMessage.error('名字获取失败。');
-        console.error('Error fetching name:', error);
-    });
-    });
+onMounted(async () => {
+  try{
+  const data = await fetchNameApi();
+    console.log('获取用户姓名-后端响应:', data.data);
+    if(data.data.data)
+    name.value = data.data.data.name;
+  else ElMessage.error('名字获取失败。');
+}
+  catch(error){
+    ElMessage.error('名字获取失败。');
+    console.error('Error fetching name:', error);
+}})
+
 </script>
 
 <template>
-  <el-header class="header">
-    <div v-if="name">
-      <!-- 常用设备对话框 -->
+    <el-header class="header">
       <el-dialog v-model="deviceDialogVisible" title="常用设备" width="800" style="cursor: default">
         <span>此处将显示所有您开启了“三十天内自动登录”的设备</span>
         <hr>
       <el-table :data="currentGridData">
-        <el-table-column property="name" label="设备名称" width="150" />
+        <el-table-column property="device_name" label="设备名称" width="150" />
         <el-table-column property="ip" label="上次登录IP" width="200" />
-        <el-table-column property="time" label="上次登录时间" />
+        <el-table-column property="online_time" label="上次登录时间" />
         <el-table-column label="操作" width="180">
         <template v-slot="scope">
-           
           <el-button
-          v-if="scope.row.name === currentName"
+          v-if="scope.row.id == service_id"
             type="text"
             size="small"
             :disabled="true"
@@ -135,7 +151,7 @@ const updateCurrentGridData = (currentPage) => {
               v-else-if="!buttonStates[scope.$index]"
               type="text"
               size="small"
-              @click="handleClick(scope.$index)"
+              @click="handleOffLine(scope.row.id,scope.$index)"
             >
               下线
             </el-button>
@@ -160,12 +176,13 @@ const updateCurrentGridData = (currentPage) => {
     </el-dialog>
 
     <el-dropdown class="header-right" trigger="hover" placement="bottom-end">
-        <span class="el-dropdown-link" style="cursor: pointer;">
+        <span v-if="name" class="el-dropdown-link" style="cursor: pointer;">
         <span>欢迎回来，{{ name }}</span>
         <el-icon>
           <ArrowDown style="font-size: 20px; color: white;" />
         </el-icon>
       </span>
+      <span v-else>加载中...</span><!--后期改为骨架屏-->
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item @click="navigateToPersonalCenter">
@@ -184,29 +201,37 @@ const updateCurrentGridData = (currentPage) => {
       </template>
 
     </el-dropdown>
-  </div>
-
-  <div v-else>
-        <span>加载中...</span><!--后期改为骨架屏-->
-      </div>
   </el-header>
 </template>
 
 <style scoped>
 .header {
+  position: fixed; /* 固定在视口顶部 */
+  top: 0; /* 距离顶部 0 */
+  left: 0; /* 左对齐 */
+  width: 100%; /* 占满宽度 */
+  height: 70px; /* 固定高度 */
+  z-index: 1000; /* 确保层级在其他内容之上 */
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  background-color: #409eff;
   padding: 0 20px;
-  height: 60px;
+  border:solid 2px #ddd;
 }
+
+.main-content {
+  margin-top: 70px; /* 留出 header 的高度，避免内容被遮挡 */
+  padding: 20px;
+  overflow-y: auto; /* 启用垂直滚动，仅在内容超出时滚动 */
+  height: calc(100vh - 70px); /* 高度为视口高度减去 header 的高度 */
+}
+
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: black;
+  color: rgb(255, 255, 255);
   padding: 10px;
   border-radius: 5px;
 }
@@ -216,5 +241,12 @@ const updateCurrentGridData = (currentPage) => {
   display: flex;
   align-items: center;
   font-size: 20px;
+  border: none !important; /* 取消边框 */
+  outline: none !important; /* 取消轮廓线 */
+}
+
+.el-dropdown-link:hover {
+  border: none !important; /* 取消边框 */
+  outline: none !important; /* 取消轮廓线 */
 }
 </style>

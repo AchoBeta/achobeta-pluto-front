@@ -1,26 +1,29 @@
 <script setup>
-import { getProgressApi } from '@/utils/api/home'
+import { getProgressApi } from '@/axios/api/home'
 
 const total_task_count = ref('0');
 const incomplete_task_count = ref('0');
 const upcoming_overdue_task_count = ref('0');
 const overdue_task_count = ref('0');
-const activeName = 'first'
 
 onMounted(async () => {
-    const atoken = localStorage.getItem('atoken');
-    getProgressApi(atoken)
-    .then(data => {
-      total_task_count.value = data.total_task_count;
-      incomplete_task_count.value = data.incomplete_task_count;
-      upcoming_overdue_task_count.value = data.upcoming_overdue_task_count;
-      overdue_task_count.value = data.overdue_task_count;
-  })
-  .catch(error => {
+  try{
+    const data = await getProgressApi({'force-update':false});
+    console.log('后端响应:', data.data);
+    if(data.data.data == null){
+      ElMessage.error('项目进度获取失败。');
+    }
+    else{
+      total_task_count.value = data.data.data.total_task_count;
+      incomplete_task_count.value = data.data.data.unfinished_task_count;
+      upcoming_overdue_task_count.value = data.data.data.will_overdue_task_count;
+      overdue_task_count.value = data.data.data.overdue_task_count;
+    }
+  }
+  catch(error){
     ElMessage.error('项目进度获取失败。')
     console.error('Error fetching progress:', error);
-  });
-  });
+  }});
 </script>
 
 <template>
@@ -30,8 +33,6 @@ onMounted(async () => {
       <el-icon class="calendar" size="24px"><Calendar /></el-icon>
       <h3 class="box-title" style="margin-left: 8px; cursor: default">项目进度</h3>
     </div>
-      <el-tabs v-model="activeName" class="demo-tabs">
-      <el-tab-pane label="卡片" name="first">
         <div class="card-container" style="cursor:default">
         <el-card class="progress-card total" shadow="hover">
           <template #header>
@@ -47,7 +48,7 @@ onMounted(async () => {
           <template #header>
             <div class="item-title">
               <el-icon><PieChart /></el-icon>
-              <span>我的未完成任务</span>
+              <span>未完成任务</span>
             </div>
           </template>
           <div class="item-content">{{ incomplete_task_count }}</div>
@@ -73,24 +74,7 @@ onMounted(async () => {
           <div class="item-content">{{ overdue_task_count }}</div>
         </el-card>
       </div>
-      </el-tab-pane>
-      <el-tab-pane label="环形进度条" name="second" class="demo-progress" style="cursor: default">
-        <div class="progress-item">
-          <el-progress type="circle" :percentage="100" status="success"/>
-          <div class="progress-label">已完成</div>
-        </div>
-        <div class="progress-item">
-            <el-progress type="circle" :percentage="70" status="warning"/>
-            <div class="progress-label">即将逾期</div>
-        </div>
-        <div class="progress-item">
-            <el-progress type="circle" :percentage="50" status="exception"/>
-            <div class="progress-label">已逾期</div>
-        </div>
-      </el-tab-pane>
-      <el-tab-pane label="Role" name="third">Role</el-tab-pane>
-      <el-tab-pane label="Task" name="fourth">Task</el-tab-pane>
-  </el-tabs>
+
     </div>
   </slot>
 </template>
@@ -98,32 +82,24 @@ onMounted(async () => {
 <style scoped>
 
 .progress-box {
-  width: 100%; /* 改为百分比宽度，以便自适应 */
-  max-width: 1200px; /* 设置最大宽度 */
-  height: 300px;
+  width: 100%;
+  height: 100%;
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  overflow: hidden;
 }
  
 .box-title, .calendar {
   font-size: 1.7em;
   font-weight: 530;
-  margin-bottom: 20px;
-  margin-top: 0;
-  margin-left: 20px;
+  margin:20px;
+  margin-right: 0px;
 }
 
 .calendar {
   color:blue;
-}
-
-.demo-tabs > .el-tabs__content {
-  padding: 32px;
-  color: #6b778c;
-  font-size: 32px;
-  font-weight: 600;
 }
 
 .card-container {
@@ -131,12 +107,14 @@ onMounted(async () => {
   flex-wrap: wrap; /* 允许子元素换行 */
   gap: 30px;
   width: 100%;
-  height: 100%;
+  margin-top: 10px;
+  padding: 20px;
+  position:relative;
+  z-index: 1;
 }
  
 .progress-card {
   flex: 1 1 230px; /* 设置卡片的灵活宽度，最小宽度为230px */
-  height: 70%;
   padding: 5px;
   background-color: rgba(220, 234, 247, 0.05);
   border-top: solid 1px #333;
@@ -185,33 +163,22 @@ onMounted(async () => {
 .item-content,
 .item-title {
   margin-top: 10px;
-  font-size: 1.5em;
   color: #333;
   line-height: 1;
   font-weight: 100;
   text-align: center;
+  font-size: 2em;
 }
- 
+
+.item-content {
+  font-size: 2em;
+}
+
 .item-title {
+  font-size: 1.7em;
   font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center; 
-}
-
-.demo-progress {
-  display: flex;
-  justify-content: space-around; /* 根据需要调整进度条之间的间距 */
-}
- 
-.progress-item {
-  text-align: center; /* 使文本居中 */
-  margin: 10px; /* 根据需要调整每个进度条的外边距 */
-}
- 
-.progress-label {
-  margin-top: 10px; /* 调整标签与进度条之间的垂直间距 */
-  font-size: 14px; /* 设置字体大小 */
-  color: #333; /* 设置字体颜色 */
 }
 </style>

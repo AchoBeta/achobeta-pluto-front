@@ -11,14 +11,14 @@ export function requestCaptcha(phoneInput, phoneError, updateCountdown) {
   const phoneNumber = phoneInput.value.toString();
 
   // 使用 POST 请求，将手机号放入请求体中
-  axios.post('/api/login/code', { phone: phoneNumber })
+  axios.post('/api/login/code', { phone: phoneNumber }, { timeout: 2000 })
     .then(response => {
       console.log("后端返回的数据:", response.data); // 打印后端的完整响应数据
 
       const data = response.data;
 
       // 根据后端返回的数据结构调整判断条件
-      if (data.Code === 200 && data.Data.Code === 20000) {
+      if (data.code === 20000) {
         // 如果请求成功，隐藏错误提示，并开始倒计时
         phoneError.style.display = 'none';
         const expirationTime = Date.now() + 60 * 1000;
@@ -27,14 +27,19 @@ export function requestCaptcha(phoneInput, phoneError, updateCountdown) {
       } else {
         // 如果请求不成功，显示错误提示
         phoneError.style.display = 'block';
-        phoneError.textContent = data.Message || '手机号不合法，请重新输入';
+        phoneError.textContent = data.message || '手机号不合法，请重新输入';//data.Message可能要修改
       }
     })
     .catch(error => {
       // 请求出错时的处理
       console.error('请求出错：', error);
-      phoneError.style.display = 'block';
-      phoneError.textContent = '请求验证码失败，请稍后重试';
+      if (error.code === 'ECONNABORTED') {
+        phoneError.style.display = 'block';
+        phoneError.textContent = '请求超时，请稍后重试';
+      } else {
+        phoneError.style.display = 'block';
+        phoneError.textContent = '请求验证码失败，请稍后重试';
+      }
     });
 }
 
@@ -44,6 +49,10 @@ export function requestCaptcha(phoneInput, phoneError, updateCountdown) {
  * @param {Function} resetGetCodeButton - 重置获取验证码按钮的回调函数
  */
 export function updateCountdown(getCodeButton, resetGetCodeButton) {
+  if (!getCodeButton) {
+    console.error('updateCountdown: getCodeButton is null or undefined');
+    return;
+  }
   const expirationTime = localStorage.getItem('captchaExpirationTime');
   if (expirationTime) {
     const timeRemaining = Math.floor((expirationTime - Date.now()) / 1000);
@@ -65,6 +74,10 @@ export function updateCountdown(getCodeButton, resetGetCodeButton) {
  * @param {HTMLButtonElement} getCodeButton - 获取验证码按钮
  */
 export function resetGetCodeButton(getCodeButton) {
+  if (!getCodeButton) {
+    console.error('resetGetCodeButton: getCodeButton is null or undefined');
+    return; // 如果按钮不存在，直接退出
+  }
   getCodeButton.disabled = false;
   getCodeButton.textContent = '重新获取';
   localStorage.removeItem('captchaExpirationTime');

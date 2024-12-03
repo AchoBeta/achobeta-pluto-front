@@ -10,7 +10,9 @@
       ] // 定义路径别名
     },
     "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true, // 启用文件名大小写一致检查
+    "strict": true // 启用严格模式
   },
   "include": [
     "vite.config.ts"

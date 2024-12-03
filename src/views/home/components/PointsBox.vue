@@ -67,20 +67,29 @@ const pointsData = ref([
 
 // 动态获取积分数据
 onMounted(async () => {
-  const points = await getPoints(userId);
-  if (points) {
-    pointsData.value[0].value = points.monthly_points || '00';
-    pointsData.value[1].value = points.monthly_ranking || '00';
-    pointsData.value[2].value = points.current_points || '00';
-    pointsData.value[3].value = points.total_points || '00';
+  const atoken = localStorage.getItem('atoken'); // 从 localStorage 获取 atoken
+
+  if (!atoken) {
+    console.error('用户未登录或 atoken 缺失');
+    alert('请先登录后查看积分信息'); // 或者直接跳转到登录页,待修改
+    // 跳转到登录页面
+    return;
   }
+
+  // const points = await getPoints(atoken);
+  // if (points) {
+  //   pointsData.value[0].value = points.monthly_points || '00';
+  //   pointsData.value[1].value = points.monthly_ranking || '00';
+  //   pointsData.value[2].value = points.current_points || '00';
+  //   pointsData.value[3].value = points.total_points || '00';
+  // }
 });
 </script>
 
 <style scoped>
 /* 主框样式 */
 .box {
-  background-color: #e8d14f79;
+  background-color: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   padding: 20px;
@@ -116,10 +125,12 @@ onMounted(async () => {
   color: #fff; /* 子框内文字颜色为白色 */
   position: relative; /* 为图标的定位做准备 */
   transition: transform 0.5s ease, box-shadow 0.4s ease;
+  cursor: pointer; /* 鼠标样式为指针 */
 }
 
 .points-item:hover {
   transform: translateY(-5px);
+  cursor: pointer; /* 鼠标悬停时保持指针样式 */
 }
 
 .bg-blue {

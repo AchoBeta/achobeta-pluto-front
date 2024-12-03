@@ -1,11 +1,8 @@
 {
-  // 禁用vscode默认的代码格式化，用eslint代替
   "editor.formatOnSave": false,
-  // Auto fix
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  // Silent the stylistic rules in you IDE, but still auto fix them
   "eslint.rules.customizations": [
     {
       "rule": "style/*",
@@ -48,7 +45,6 @@
       "severity": "off"
     }
   ],
-  // Enable eslint for all supported languages
   "eslint.validate": [
     "javascript",
     "javascriptreact",

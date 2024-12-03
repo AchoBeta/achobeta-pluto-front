@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { requestCaptcha, updateCountdown, resetGetCodeButton } from './utils/captcha.js';
+import router from '@/router';
+import { checkAutoLoginApi } from '@/axios/api/login'
 import { login } from './utils/login.js';
 
 const phoneInput = ref(null);
@@ -11,13 +13,33 @@ const getCodeButton = ref(null);
 const loginRemember = ref(false);
 
 // 在页面加载时启动倒计时检查
-onMounted(() => {
+onMounted(async() => {
+  try{
+  const rtoken = localStorage.getItem('rtoken');
+  //console.log("自动登录-前端获取的rtoken:",rtoken);
+  const response = await checkAutoLoginApi(rtoken);
+  console.log("自动登录-后端响应:",response.data)
+  if (response.data.code === 20000) {
+    // 自动登录成功，跳转到主页
+    router.push('/home');
+    localStorage.setItem('rtoken', response.data.data.rtoken);
+    localStorage.setItem('atoken', response.data.data.atoken);
+  } else {
+    // 自动登录失败，显示登录弹窗
+    console.log('自动登录失败');
+  }}
+  catch(error){
+    // 处理请求错误
+    console.error('Failed to check auto login:', error);
+  };
   updateCountdown(getCodeButton.value, () => resetGetCodeButton(getCodeButton.value));
 });
 
 // 封装函数调用
 const handleGetCodeClick = () => requestCaptcha(phoneInput.value, phoneError.value, () => updateCountdown(getCodeButton.value, () => resetGetCodeButton(getCodeButton.value)));
-const handleLoginClick = () => login(phoneInput.value, captchaInput.value, captchaError.value, loginRemember.value);
+const handleLoginClick = async () => {
+  await login(phoneInput.value, captchaInput.value, captchaError.value, loginRemember.value);
+};
 </script>
 
 <template>
@@ -66,7 +88,7 @@ body {
 
 .welcome {
     flex: 0 0 35%; /* 左侧欢迎部分占据35%的宽度 */
-    background-color: #f0f8ff;
+    background-color: #9dcaf2d2;
     padding: 40px;
     display: flex;
     flex-direction: column; /* 垂直排列图片和标题 */
@@ -95,14 +117,15 @@ body {
 
 .login-box {
     flex: 1; /* 占据剩余宽度 */
-    max-width: 400px;
-    padding: 20px;
+    max-width: 500px;
+    padding: 40px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     margin: auto;
     border: 1px solid #ccc;
     border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.373);
 }
 
 .error-message {
@@ -116,7 +139,7 @@ body {
     margin-bottom: 15px;
     display: flex; /* 使用flex布局 */
     align-items: center; /* 垂直居中对齐 */
-    gap: 8px; /* 控制输入框与按钮的间距 */
+    gap: 12px; /* 控制输入框与按钮的间距 */
     width: 100%; /* 确保 input-group 在容器内 */
 }
 
@@ -129,20 +152,22 @@ input[type="tel"], input[type="text"] {
     flex: 1; /* 输入框占据剩余空间 */
     padding: 10px;
     border: 1px solid #ccc; /* 添加边框 */
-    border-radius: 4px; /* 圆角边框 */
+    border-radius: 6px; /* 圆角边框 */
     outline: none; /* 去掉聚焦时的轮廓 */
+    font-size: 18px; /* 增加字体大小 */
+    height: 50px; /* 增加高度 */
     box-sizing: border-box; /* 防止内边距影响尺寸 */
     min-width: 0; /* 避免 flex 布局导致的输入框溢出 */
 }
 
 .get-code {
-    padding: 8px 12px; /* 调整内边距 */
+    padding: 10px 14px; /* 调整内边距 */
     background-color: transparent; /* 按钮背景透明 */
     color: #4682b4; /* 按钮文字颜色为浅蓝色 */
     border: none; /* 移除边框 */
     border-radius: 4px; /* 圆角 */
     cursor: pointer; /* 鼠标悬停效果 */
-    font-size: 12px;
+    font-size: 14px;
     white-space: nowrap; /* 防止文字换行 */
     flex-shrink: 0; /* 防止按钮缩小 */
 }
